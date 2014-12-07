@@ -124,7 +124,7 @@ class Csg:
 		b.clipTo(a)
 		b.invert()
 		a.build(b.allPolygons())
-		a.invert();
+		a.invert()
 		return Csg.fromPolygons(a.allPolygons())
 
 	# Return a CSG solid representing space both this solid and in the
@@ -187,8 +187,7 @@ class Csg:
 		for two in one:
 			vertices = []
 			for three in two[0]:
-				pos = Vector(c.x + r[0] * (2 * (1 if (three & 1) != 0 else 0) - 1), c.y + r[1]
-						* (2 * (1 if (three & 2) != 0 else 0) - 1), c.z + r[2] * (2 * (1 if (three & 4) != 0 else 0) - 1))
+				pos = Vector([c.x + r[0] * (2 * (1 if (three & 1) != 0 else 0) - 1), c.y + r[1] * (2 * (1 if (three & 2) != 0 else 0) - 1), c.z + r[2] * (2 * (1 if (three & 4) != 0 else 0) - 1)])
 				v = Vertex(pos, Vector(two[1]))
 				vertices.append(v)
 
@@ -201,7 +200,7 @@ class Csg:
 	def vertex(theta, phi, r, c, vertices):
 		theta = theta * math.pi * 2
 		phi = phi * math.pi
-		direction = Vector(math.cos(theta) * math.sin(phi), math.cos(phi), math.sin(theta) * math.sin(phi))
+		direction = Vector([math.cos(theta) * math.sin(phi), math.cos(phi), math.sin(theta) * math.sin(phi)])
 		vertices.append(Vertex(c.plus(direction.times(r)), direction))
 
 	# Construct a solid sphere. Optional parameters are `center`, `radius`,
@@ -244,9 +243,9 @@ class Csg:
 	@staticmethod
 	def point(stack, seg, normalBlend, s, axisX, axisY, axisZ, ray, r):
 		angle = seg * math.pi * 2
-		out = axisX.times(math.cos(angle)).plus(axisY.times(math.sin(angle)));
-		pos = s.plus(ray.times(stack)).plus(out.times(r));
-		normal = out.times(1 - math.fabs(normalBlend)).plus(axisZ.times(normalBlend));
+		out = axisX.times(math.cos(angle)).plus(axisY.times(math.sin(angle)))
+		pos = s.plus(ray.times(stack)).plus(out.times(r))
+		normal = out.times(1 - math.fabs(normalBlend)).plus(axisZ.times(normalBlend))
 		return Vertex(pos, normal)
 
 
@@ -274,7 +273,7 @@ class Csg:
 
 		axisZ = ray.unit()
 		isY = (math.fabs(axisZ.y) > 0.5)
-		axisX = Vector(1 if isY else 0, 0 if isY else 1, 0).cross(axisZ).unit()
+		axisX = Vector([1 if isY else 0, 0 if isY else 1, 0]).cross(axisZ).unit()
 		axisY = axisX.cross(axisZ).unit()
 		start = Vertex(s, axisZ.negated())
 		end = Vertex(e, axisZ.unit())
@@ -283,9 +282,9 @@ class Csg:
 		for i in range(0, slices):
 			t0 = i / slices
 			t1 = (i + 1) / slices
-			polygons.append(Polygon(start, Csg.point(0, t0, -1, s, axisX, axisY, axisZ, ray, r), Csg.point(0, t1, -1, s, axisX, axisY, axisZ, ray, r)))
-			polygons.append(Polygon(Csg.point(0, t1, 0, s, axisX, axisY, axisZ, ray, r), Csg.point(0, t0, 0, s, axisX, axisY, axisZ, ray, r), Csg.point(1, t0, 0, s, axisX, axisY, axisZ, ray, r), Csg.point(1, t1, 0, s, axisX, axisY, axisZ, ray, r)))
-			polygons.append(Polygon(end, Csg.point(1, t1, 1, s, axisX, axisY, axisZ, ray, r), Csg.point(1, t0, 1, s, axisX, axisY, axisZ, ray, r)))
+			polygons.append(Polygon([start, Csg.point(0, t0, -1, s, axisX, axisY, axisZ, ray, r), Csg.point(0, t1, -1, s, axisX, axisY, axisZ, ray, r)]))
+			polygons.append(Polygon([Csg.point(0, t1, 0, s, axisX, axisY, axisZ, ray, r), Csg.point(0, t0, 0, s, axisX, axisY, axisZ, ray, r), Csg.point(1, t0, 0, s, axisX, axisY, axisZ, ray, r), Csg.point(1, t1, 0, s, axisX, axisY, axisZ, ray, r)]))
+			polygons.append(Polygon([end, Csg.point(1, t1, 1, s, axisX, axisY, axisZ, ray, r), Csg.point(1, t0, 1, s, axisX, axisY, axisZ, ray, r)]))
 
 		return Csg.fromPolygons(polygons)
 
@@ -504,6 +503,10 @@ class Plane:
 #This can be used to define per-polygon properties (such as surface color).
 class Polygon:
 
+	vertices = None
+	shared = None
+	plane = None
+
 	def __init__(self, vertices, shared = None):
 		self.vertices = vertices
 		self.shared = shared
@@ -538,30 +541,25 @@ class Vector:
 	y = 0.0
 	z = 0.0
 
-	def __init__(self, x, y = None, z = None):
-		if y == None and z == None:
-			self.x = x[0]
-			self.y = x[1]
-			self.z = x[2]
-		else: 
-			self.x = x
-			self.y = y
-			self.z = z
+	def __init__(self, o):
+		self.x = o[0]
+		self.y = o[1]
+		self.z = o[2]
 		
 	def clone(self):
-		return Vector(self.x, self.y, self.z)
+		return Vector([self.x, self.y, self.z])
 
 	def times(self, a):
-		return Vector(self.x * a, self.y * a, self.z * a)
+		return Vector([self.x * a, self.y * a, self.z * a])
 
 	def dividedBy(self, a):
-		return Vector(self.x / a, self.y / a, self.z / a)
+		return Vector([self.x / a, self.y / a, self.z / a])
 
 	def plus(self, a):
-		return Vector(self.x + a.x, self.y + a.y, self.z + a.z)
+		return Vector([self.x + a.x, self.y + a.y, self.z + a.z])
 
 	def minus(self, a):
-		return Vector(self.x - a.x, self.y - a.y, self.z - a.z)
+		return Vector([self.x - a.x, self.y - a.y, self.z - a.z])
 
 	def unit(self):
 		return self.dividedBy(self.length())
@@ -573,11 +571,10 @@ class Vector:
 		return self.x * a.x + self.y * a.y + self.z * a.z
 
 	def cross(self, a):
-		return Vector(self.y * a.z - self.z * a.y, self.z * a.x - self.x
-				* a.z, self.x * a.y - self.y * a.x)
+		return Vector([self.y * a.z - self.z * a.y, self.z * a.x - self.x * a.z, self.x * a.y - self.y * a.x])
 
 	def negated(self):
-		return Vector(-self.x, -self.y, -self.z)
+		return Vector([-self.x, -self.y, -self.z])
 
 	def lerp(self, a, t):
 		return self.plus(a.minus(self).times(t))
@@ -610,4 +607,4 @@ class Vertex:
 	# interpolating all properties using a parameter of `t`. Subclasses should
 	# override this to interpolate additional properties.
 	def interpolate(self, other, t):
-		return Vertex(self.pos.lerp(other.pos, t), self.normal.lerp(other.normal, t));
+		return Vertex(self.pos.lerp(other.pos, t), self.normal.lerp(other.normal, t))
