@@ -1,6 +1,6 @@
 #
-#  Csg.java
-#  javacsg
+#  csg.py
+#  pycsg
 #
 #  Created by William Shakour (billy1380) on 6 Dec 2014.
 #  Copyright © 2014 SPACEHOPPER STUDIOS Ltd. All rights reserved.
