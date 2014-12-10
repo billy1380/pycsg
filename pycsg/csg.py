@@ -7,55 +7,59 @@
 #
 import math
 
-#Constructive Solid Geometry (CSG) is a modeling technique that uses Boolean
-#operations like union and intersection to combine 3D solids. This library
-#implements CSG operations on meshes elegantly and concisely using BSP trees,
-#and is meant to serve as an easily understandable implementation of the
-#algorithm. All edge cases involving overlapping coplanar polygons in both
-#solids are correctly handled.
+# # License
 #
-#Example usage:
+# Copyright (c) 2011 Evan Wallace (http://madebyevan.com/), under the MIT license.
 #
-#  var cube = CSG.cube();
-#  var sphere = CSG.sphere({ radius: 1.3 });
-#  var polygons = cube.subtract(sphere).toPolygons();
-#
-### Implementation Details
-#
-#All CSG operations are implemented in terms of two functions, `clipTo()` and
-#`invert()`, which remove parts of a BSP tree inside another BSP tree and swap
-#solid and empty space, respectively. To find the union of `a` and `b`, we
-#want to remove everything in `a` inside `b` and everything in `b` inside `a`,
-#then combine polygons from `a` and `b` into one solid:
-#
-#  a.clipTo(b);
-#  b.clipTo(a);
-#  a.build(b.allPolygons());
-#
-#The only tricky part is handling overlapping coplanar polygons in both trees.
-#The code above keeps both copies, but we need to keep them in one tree and
-#remove them in the other tree. To remove them from `b` we can clip the
-#inverse of `b` against `a`. The code for union now looks like this:
-#
-#  a.clipTo(b);
-#  b.clipTo(a);
-#  b.invert();
-#  b.clipTo(a);
-#  b.invert();
-#  a.build(b.allPolygons());
-#
-#Subtraction and intersection naturally follow from set operations. If
-#union is `A | B`, subtraction is `A - B = ~(~A | B)` and intersection is
-#`A & B = ~(~A | ~B)` where `~` is the complement operator.
-#
-### License
-#
-#Copyright (c) 2011 Evan Wallace (http:#madebyevan.com/), under the MIT license.
-
-#Holds a binary space partition tree representing a 3D solid. Two solids can
-#be combined using the `union()`, `subtract()`, and `intersect()` methods.
 class Csg:
-	polygons = []
+	"""
+	Constructive Solid Geometry (CSG) is a modeling technique that uses Boolean
+	operations like union and intersection to combine 3D solids. This library
+	implements CSG operations on meshes elegantly and concisely using BSP trees,
+	and is meant to serve as an easily understandable implementation of the
+	algorithm. All edge cases involving overlapping coplanar polygons in both
+	solids are correctly handled.
+	
+	Example usage:
+	
+	 var cube = CSG.cube();
+	 var sphere = CSG.sphere({ radius: 1.3 });
+	 var polygons = cube.subtract(sphere).toPolygons();
+	
+	## Implementation Details
+	
+	All CSG operations are implemented in terms of two functions, `clipTo()` and
+	`invert()`, which remove parts of a BSP tree inside another BSP tree and swap
+	solid and empty space, respectively. To find the union of `a` and `b`, we
+	want to remove everything in `a` inside `b` and everything in `b` inside `a`,
+	then combine polygons from `a` and `b` into one solid:
+	
+	 a.clipTo(b);
+	 b.clipTo(a);
+	 a.build(b.allPolygons());
+	
+	The only tricky part is handling overlapping coplanar polygons in both trees.
+	The code above keeps both copies, but we need to keep them in one tree and
+	remove them in the other tree. To remove them from `b` we can clip the
+	inverse of `b` against `a`. The code for union now looks like this:
+	
+	 a.clipTo(b);
+	 b.clipTo(a);
+	 b.invert();
+	 b.clipTo(a);
+	 b.invert();
+	 a.build(b.allPolygons());
+	
+	Subtraction and intersection naturally follow from set operations. If
+	union is `A | B`, subtraction is `A - B = ~(~A | B)` and intersection is
+	`A & B = ~(~A | ~B)` where `~` is the complement operator.
+	
+	# Holds a binary space partition tree representing a 3D solid. Two solids can
+	# be combined using the `union()`, `subtract()`, and `intersect()` methods.
+	"""
+	
+	def __init__(self):
+		self.polygons = []
 
 	# Construct a CSG solid from a list of `CSG.Polygon` instances.
 	@staticmethod
@@ -66,7 +70,6 @@ class Csg:
 
 	def clone(self):
 		csg = Csg()
-
 		for p in self.polygons:
 			csg.polygons.append(p.clone())
 
@@ -75,21 +78,23 @@ class Csg:
 	def toPolygons(self):
 		return self.polygons
 
-	#Return a CSG solid representing space in either this solid or in the
-	# solid `csg`. Neither this solid nor the solid `csg` are modified.
-	# 
-	#     A.union(B)
-	# 
-	#     +-------+            +-------+
-	#     |       |            |       |
-	#     |   A   |            |       |
-	#     |    +--+----+   =   |       +----+
-	#     +----+--+    |       +----+       |
-	#          |   B   |            |       |
-	#          |       |            |       |
-	#          +-------+            +-------+
-	# 
 	def union(self, csg):
+		"""
+		Return a CSG solid representing space in either this solid or in the
+		solid `csg`. Neither this solid nor the solid `csg` are modified.
+		 
+			 A.union(B)
+		 
+		     +-------+            +-------+
+		     |       |            |       |
+		     |   A   |            |       |
+		     |    +--+----+   =   |       +----+
+		     +----+--+    |       +----+       |
+		          |   B   |            |       |
+		          |       |            |       |
+		          +-------+            +-------+
+			 
+		"""
 		a = Node(self.clone().polygons)
 		b = Node(csg.clone().polygons)
 		a.clipTo(b)
@@ -100,21 +105,23 @@ class Csg:
 		a.build(b.allPolygons())
 		return Csg.fromPolygons(a.allPolygons())
 
-	#Return a CSG solid representing space in this solid but not in the
-	# solid `csg`. Neither this solid nor the solid `csg` are modified.
-	# 
-	#     A.subtract(B)
-	# 
-	#     +-------+            +-------+
-	#     |       |            |       |
-	#     |   A   |            |       |
-	#     |    +--+----+   =   |    +--+
-	#     +----+--+    |       +----+
-	#          |   B   |
-	#          |       |
-	#          +-------+
-	# 
 	def subtract(self, csg):
+		"""
+		Return a CSG solid representing space in this solid but not in the
+		solid `csg`. Neither this solid nor the solid `csg` are modified.
+		
+			 A.subtract(B)
+		
+		    +-------+            +-------+
+		    |       |            |       |
+		    |   A   |            |       |
+		    |    +--+----+   =   |    +--+
+		    +----+--+    |       +----+
+		          |   B   |
+		          |       |
+		          +-------+
+		 
+		"""
 		a = Node(self.clone().polygons)
 		b = Node(csg.clone().polygons)
 		a.invert()
@@ -127,21 +134,23 @@ class Csg:
 		a.invert()
 		return Csg.fromPolygons(a.allPolygons())
 
-	# Return a CSG solid representing space both this solid and in the
-	# solid `csg`. Neither this solid nor the solid `csg` are modified.
-	# 
-	#     A.intersect(B)
-	# 
-	#     +-------+
-	#     |       |
-	#     |   A   |
-	#     |    +--+----+   =   +--+
-	#     +----+--+    |       +--+
-	#          |   B   |
-	#          |       |
-	#          +-------+
-	# 
 	def intersect(self, csg):
+		"""
+		Return a CSG solid representing space both this solid and in the
+		solid `csg`. Neither this solid nor the solid `csg` are modified.
+		
+		    A.intersect(B)
+		
+		    +-------+
+		    |       |
+		    |   A   |
+		    |    +--+----+   =   +--+
+		    +----+--+    |       +--+
+		         |   B   |
+		         |       |
+		         +-------+
+	 
+		"""
 		a = Node(self.clone().polygons)
 		b = Node(csg.clone().polygons)
 		a.invert()
@@ -153,41 +162,52 @@ class Csg:
 		a.invert()
 		return Csg.fromPolygons(a.allPolygons())
 
-	# Return a CSG solid with solid and empty space switched. This solid is
-	# not modified.
 	def inverse(self):
+		"""
+		 Return a CSG solid with solid and empty space switched. This solid is
+		 not modified.
+		"""
 		csg = self.clone()
-
 		for polygon in csg.polygons:
 			polygon.flip()
-
 		return csg
 
-	# Construct an axis-aligned solid cuboid. Optional parameters are `center` and
-	# `radius`, which default to `[0, 0, 0]` and `[1, 1, 1]`. The radius can be
-	# specified using a single number or a list of three numbers, one for each axis.
-	# 
-	# Example code:
-	# 
-	#	     var cube = CSG.cube({
-	#	       center: [0, 0, 0],
-	#	       radius: 1
-	#	     });
 	@staticmethod
 	def cube(options = None):
+		"""
+		 Construct an axis-aligned solid cuboid. Optional parameters are `center` and
+		 `radius`, which default to `[0, 0, 0]` and `[1, 1, 1]`. The radius can be
+		 specified using a single number or a list of three numbers, one for each axis.
+		 
+		 Example code:
+		 
+			     var cube = CSG.cube({
+			       center: [0, 0, 0],
+			       radius: 1
+			     });
+		"""
 		options = {} if options == None else options
 		
 		c = Vector([0, 0, 0] if 'center' not in options else options['center'])
 		r = [1, 1, 1] if 'radius' not in options else options['radius'] if type(options['radius']) is list else [options['radius'], options['radius'], options['radius']]
 
-		one = [[[0, 4, 6, 2], [-1, 0, 0]], [[1, 3, 7, 5], [+1, 0, 0]],[[0, 1, 5, 4], [0, -1, 0]], [[2, 6, 7, 3], [0, +1, 0]],[[0, 2, 3, 1], [0, 0, -1]], [[4, 5, 7, 6], [0, 0, +1]]]
+		one = [
+			[[0, 4, 6, 2], [-1, 0, 0]],
+			[[1, 3, 7, 5], [+1, 0, 0]],
+			[[0, 1, 5, 4], [0, -1, 0]],
+			[[2, 6, 7, 3], [0, +1, 0]],
+			[[0, 2, 3, 1], [0, 0, -1]],
+			[[4, 5, 7, 6], [0, 0, +1]]
+			]
 
 		polygons = []
 
 		for two in one:
 			vertices = []
 			for three in two[0]:
-				pos = Vector([c.x + r[0] * (2 * (1 if (three & 1) != 0 else 0) - 1), c.y + r[1] * (2 * (1 if (three & 2) != 0 else 0) - 1), c.z + r[2] * (2 * (1 if (three & 4) != 0 else 0) - 1)])
+				pos = Vector([c.x + r[0] * (2 * (1 if (three & 1) != 0 else 0) - 1),
+							 c.y + r[1] * (2 * (1 if (three & 2) != 0 else 0) - 1), 
+							 c.z + r[2] * (2 * (1 if (three & 4) != 0 else 0) - 1)])
 				v = Vertex(pos, Vector(two[1]))
 				vertices.append(v)
 
@@ -203,21 +223,23 @@ class Csg:
 		direction = Vector([math.cos(theta) * math.sin(phi), math.cos(phi), math.sin(theta) * math.sin(phi)])
 		vertices.append(Vertex(c.plus(direction.times(r)), direction))
 
-	# Construct a solid sphere. Optional parameters are `center`, `radius`,
-	# `slices`, and `stacks`, which default to `[0, 0, 0]`, `1`, `16`, and `8`.
-	# The `slices` and `stacks` parameters control the tessellation along the
-	# longitude and latitude directions.
-	# 
-	# Example usage:
-	# 
-	#	     var sphere = CSG.sphere({
-	#	       center: [0, 0, 0],
-	#	       radius: 1,
-	#	       slices: 16,
-	#	       stacks: 8
-	#	     });
 	@staticmethod
 	def sphere(options = None):
+		"""
+		Construct a solid sphere. Optional parameters are `center`, `radius`,
+		`slices`, and `stacks`, which default to `[0, 0, 0]`, `1`, `16`, and `8`.
+		The `slices` and `stacks` parameters control the tessellation along the
+		longitude and latitude directions.
+		
+		Example usage:
+		
+		     var sphere = CSG.sphere({
+		       center: [0, 0, 0],
+		       radius: 1,
+		       slices: 16,
+		       stacks: 8
+		     });
+		"""
 		options = {} if options == None else options
 
 		c = Vector([0, 0, 0] if 'center' not in options else options['center'])
@@ -226,8 +248,8 @@ class Csg:
 		stacks = 8 if 'stacks' not in options else options['stacks']
 		polygons = []
 
-		for i in range(0, slices):
-			for j in range(0, stacks):
+		for i in range(slices):
+			for j in range(stacks):
 				vertices = []
 				Csg.vertex(i / slices, j / stacks, r, c, vertices)
 				if j > 0:
@@ -248,21 +270,22 @@ class Csg:
 		normal = out.times(1 - math.fabs(normalBlend)).plus(axisZ.times(normalBlend))
 		return Vertex(pos, normal)
 
-
-	# Construct a solid cylinder. Optional parameters are `start`, `end`,
-	# `radius`, and `slices`, which default to `[0, -1, 0]`, `[0, 1, 0]`, `1`, and
-	# `16`. The `slices` parameter controls the tessellation.
-	# 
-	# Example usage:
-	# 
-	#	     var cylinder = CSG.cylinder({
-	#	       start: [0, -1, 0],
-	#	       end: [0, 1, 0],
-	#	       radius: 1,
-	#	       slices: 16
-	#	     });
 	@staticmethod
 	def cylinder(options = None):
+		"""
+		Construct a solid cylinder. Optional parameters are `start`, `end`,
+		`radius`, and `slices`, which default to `[0, -1, 0]`, `[0, 1, 0]`, `1`, and
+		`16`. The `slices` parameter controls the tessellation.
+		
+		Example usage:
+		
+				var cylinder = CSG.cylinder({
+				  start: [0, -1, 0],
+				  end: [0, 1, 0],
+				  radius: 1,
+				  slices: 16
+				});
+		"""
 		options = {} if options == None else options
 		
 		s = Vector([0, -1, 0] if 'start' not in options else options['start'])
@@ -279,7 +302,7 @@ class Csg:
 		end = Vertex(e, axisZ.unit())
 		polygons = []
 
-		for i in range(0, slices):
+		for i in range(slices):
 			t0 = i / slices
 			t1 = (i + 1) / slices
 			polygons.append(Polygon([start, Csg.point(0, t0, -1, s, axisX, axisY, axisZ, ray, r), Csg.point(0, t1, -1, s, axisX, axisY, axisZ, ray, r)]))
@@ -288,27 +311,16 @@ class Csg:
 
 		return Csg.fromPolygons(polygons)
 
-#
-#  Node.java
-#  javacsg
-#
-#  Created by William Shakour (billy1380) on 6 Dec 2014.
-#  Copyright © 2014 SPACEHOPPER STUDIOS Ltd. All rights reserved.
-#
-
-#Holds a node in a BSP tree. A BSP tree is built from a collection of polygons
-#by picking a polygon to split along. That polygon (and all other coplanar
-#polygons) are added directly to that node and the other polygons are added to
-#the front and/or back subtrees. This is not a leafy BSP tree since there is
-#no distinction between internal and leaf nodes.
 class Node:
-
-	plane = None
-	front = None
-	back = None
-	polygons = None
+	"""
+	Holds a node in a BSP tree. A BSP tree is built from a collection of polygons
+	by picking a polygon to split along. That polygon (and all other coplanar
+	polygons) are added directly to that node and the other polygons are added to
+	the front and/or back subtrees. This is not a leafy BSP tree since there is
+	no distinction between internal and leaf nodes.
+	"""
 	
-	def __init__(self, polygons = None):
+	def __init__(self, polygons=None):
 		self.plane = None
 		self.front = None
 		self.back = None
@@ -331,9 +343,11 @@ class Node:
 
 		return node
 
-	# Convert solid space to empty space and empty space to solid space.
 	def invert(self):
-		for i in range (0, len(self.polygons)):
+		"""
+		Convert solid space to empty space and empty space to solid space.
+		"""
+		for i in range(len(self.polygons)):
 			self.polygons[i].flip()
 
 		self.plane.flip()
@@ -347,14 +361,16 @@ class Node:
 		self.front = self.back
 		self.back = temp
 
-	# Recursively remove all polygons in `polygons` that are inside this BSP
-	# tree.
 	def clipPolygons(self, polygons):
+		"""
+		Recursively remove all polygons in `polygons` that are inside this BSP
+		tree.
+		"""
 		if self.plane == None:
 			return polygons[:]
 		front = []
 		back = []
-		for i in range(0, len(polygons)):
+		for i in range(len(polygons)):
 			self.plane.splitPolygon(polygons[i], front, back, front, back)
 			
 		if self.front != None:
@@ -366,63 +382,62 @@ class Node:
 		
 		return front + back
 
-	# Remove all polygons in this BSP tree that are inside the other BSP tree
-	# `bsp`.
 	def clipTo(self, bsp):
+		"""
+		Remove all polygons in this BSP tree that are inside the other BSP tree
+		`bsp`.
+		"""
 		self.polygons = bsp.clipPolygons(self.polygons)
-		
 		if self.front != None:
 			self.front.clipTo(bsp)
-
 		if self.back != None:
 			self.back.clipTo(bsp)
-
-	# Return a list of all polygons in this BSP tree.
+	
 	def allPolygons(self):
+		"""
+		Return a list of all polygons in this BSP tree.
+		"""
 		polygons = self.polygons[:]
-
 		if self.front != None:
 			polygons += self.front.allPolygons()
-
 		if self.back != None:
 			polygons += self.back.allPolygons()
-
 		return polygons
 
-	# Build a BSP tree out of `polygons`. When called on an existing tree, the
-	# polygons are filtered down to the bottom of the tree and become new
-	# nodes there. Each set of polygons is partitioned using the first polygon
-	# (no heuristic is used to pick a good split).
 	def build(self, polygons):
+		"""
+		Build a BSP tree out of `polygons`. When called on an existing tree, the
+		polygons are filtered down to the bottom of the tree and become new
+		nodes there. Each set of polygons is partitioned using the first polygon
+		(no heuristic is used to pick a good split).
+		"""
 		if len(polygons) == 0:
 			return
-		
 		if self.plane == None:
 			self.plane = polygons[0].plane.clone()
 
 		front = []
 		back = []
-		for i in range(0, len(polygons)):
+		for i in range(len(polygons)):
 			self.plane.splitPolygon(polygons[i], self.polygons, self.polygons, front, back)
-		
 		if len(front) > 0:
 			if self.front == None:
 				self.front = Node()
-			
 			self.front.build(front)
-		
 		if len(back) > 0:
 			if self.back == None:
 				self.back = Node()
-			
 			self.back.build(back)
 
-
-#Represents a plane in 3D space.
 class Plane:
+	"""
+	Represents a plane in 3D space.
+	"""
 
-	# `CSG.Plane.EPSILON` is the tolerance used by `splitPolygon()` to decide if a
-	# point is on the plane.
+	"""
+	`CSG.Plane.EPSILON` is the tolerance used by `splitPolygon()` to decide if a
+	point is on the plane.
+	"""
 	EPSILON = 1.0e-5
 	
 	COPLANAR = 0
@@ -446,17 +461,19 @@ class Plane:
 		self.normal = self.normal.negated()
 		self.w = -self.w
 
-	# Split `polygon` by this plane if needed, then put the polygon or polygon
-	# fragments in the appropriate lists. Coplanar polygons go into either
-	# `coplanarFront` or `coplanarBack` depending on their orientation with
-	# respect to this plane. Polygons in front or in back of this plane go into
-	# either `front` or `back`.
 	def splitPolygon(self, polygon, coplanarFront, coplanarBack, front, back):
+		"""
+		Split `polygon` by this plane if needed, then put the polygon or polygon
+		fragments in the appropriate lists. Coplanar polygons go into either
+		`coplanarFront` or `coplanarBack` depending on their orientation with
+		respect to this plane. Polygons in front or in back of this plane go into
+		either `front` or `back`.
+		"""
 		# Classify each point as well as the entire polygon into one of the above
 		# four classes.
 		polygonType = 0
 		types = []
-		for i in range(0, len(polygon.vertices)):
+		for i in range(len(polygon.vertices)):
 			t = self.normal.dot(polygon.vertices[i].pos) - self.w
 			currentType = Plane.BACK if (t < -Plane.EPSILON) else Plane.FRONT if (t > Plane.EPSILON) else Plane.COPLANAR
 			polygonType |= currentType
@@ -472,7 +489,7 @@ class Plane:
 		if (polygonType == Plane.SPANNING):
 			f = []
 			b = []
-			for i in range(0, len(polygon.vertices)):
+			for i in range(len(polygon.vertices)):
 				j = (i + 1) % len(polygon.vertices)
 				ti = types[i]
 				tj = types[j]
@@ -493,54 +510,45 @@ class Plane:
 			if (len(b) >= 3):
 				back.append(Polygon(b, polygon.shared))
 				
-#Represents a convex polygon. The vertices used to initialize a polygon must
-#be coplanar and form a convex loop. They do not have to be `CSG.Vertex`
-#instances but they must behave similarly (duck typing can be used for
-#customization).
-#
-#Each convex polygon has a `shared` property, which is shared between all
-#polygons that are clones of each other or were split from the same polygon.
-#This can be used to define per-polygon properties (such as surface color).
 class Polygon:
+	"""
+	Represents a convex polygon. The vertices used to initialize a polygon must
+	be coplanar and form a convex loop. They do not have to be `CSG.Vertex`
+	instances but they must behave similarly (duck typing can be used for
+	customization).
+	
+	Each convex polygon has a `shared` property, which is shared between all
+	polygons that are clones of each other or were split from the same polygon.
+	This can be used to define per-polygon properties (such as surface color).
+	"""
 
-	vertices = None
-	shared = None
-	plane = None
-
-	def __init__(self, vertices, shared = None):
+	def __init__(self, vertices, shared=None):
 		self.vertices = vertices
 		self.shared = shared
 		self.plane = Plane.fromPoints(vertices[0].pos, vertices[1].pos, vertices[2].pos)
 
 	def clone(self):
 		vertexClone = []
-
 		for vertex in self.vertices:
 			vertexClone.append(vertex)
-
 		return Polygon(vertexClone, self.shared)
 
 	def flip(self):
 		self.vertices.reverse()
-
 		for vertex in self.vertices:
 			vertex.flip()
-
 		self.plane.flip()
 
-#Represents a 3D vector.
-#
-#Example usage:
-#
-#  CSG.Vector(1, 2, 3);
-#  CSG.Vector([1, 2, 3]);
-#  CSG.Vector({ x: 1, y: 2, z: 3 });
 class Vector:
+	"""
+	 Represents a 3D vector.
 
-	x = 0.0
-	y = 0.0
-	z = 0.0
-
+	 Example usage:
+	
+	  CSG.Vector(1, 2, 3);
+	  CSG.Vector([1, 2, 3]);
+	  CSG.Vector({ x: 1, y: 2, z: 3 });
+  	"""
 	def __init__(self, o):
 		self.x = o[0]
 		self.y = o[1]
@@ -579,18 +587,16 @@ class Vector:
 	def lerp(self, a, t):
 		return self.plus(a.minus(self).times(t))
 
-#Represents a vertex of a polygon. Use your own vertex class instead of this
-#one to provide additional features like texture coordinates and vertex
-#colors. Custom vertex classes need to provide a `pos` property and `clone()`,
-#`flip()`, and `interpolate()` methods that behave analogous to the ones
-#defined by `CSG.Vertex`. This class provides `normal` so convenience
-#functions like `CSG.sphere()` can return a smooth vertex normal, but `normal`
-#is not used anywhere else.
 class Vertex:
-
-	pos = None
-	normal = None
-
+	"""
+	Represents a vertex of a polygon. Use your own vertex class instead of this
+	one to provide additional features like texture coordinates and vertex
+	colors. Custom vertex classes need to provide a `pos` property and `clone()`,
+	`flip()`, and `interpolate()` methods that behave analogous to the ones
+	defined by `CSG.Vertex`. This class provides `normal` so convenience
+	functions like `CSG.sphere()` can return a smooth vertex normal, but `normal`
+	is not used anywhere else.
+	"""
 	def __init__(self, pos, normal):
 		self.pos = pos.clone()
 		self.normal = normal.clone()
@@ -598,13 +604,17 @@ class Vertex:
 	def clone(self):
 		return Vertex(self.pos.clone(), self.normal.clone())
 
-	# Invert all orientation-specific data (e.g. vertex normal). Called when the
-	# orientation of a polygon is flipped.
 	def flip(self):
+		"""
+		Invert all orientation-specific data (e.g. vertex normal). Called when the
+		orientation of a polygon is flipped.
+		"""
 		self.normal = self.normal.negated()
 
-	# Create a vertex between this vertex and `other` by linearly
-	# interpolating all properties using a parameter of `t`. Subclasses should
-	# override this to interpolate additional properties.
 	def interpolate(self, other, t):
+		"""
+		 Create a vertex between this vertex and `other` by linearly
+	 	interpolating all properties using a parameter of `t`. Subclasses should
+	 	override this to interpolate additional properties.
+		"""
 		return Vertex(self.pos.lerp(other.pos, t), self.normal.lerp(other.normal, t))
