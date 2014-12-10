@@ -4,6 +4,7 @@ Created on 7 Dec 2014
 @author: William Shakour (billy1380)
 '''
 from pycsg.csg import Csg
+import sys
 
 if __name__ == '__main__':
     a = Csg.cube()
@@ -23,12 +24,13 @@ if __name__ == '__main__':
     faces = []
     
     a = Csg.cube()
-    
     b = Csg.sphere({'radius': 1.35})
+    c = Csg.cylinder({'radius': 1})
     
-    c = Csg.cylinder({'radius': 1});
-    
-    d = a.subtract(b)
+    rl = sys.getrecursionlimit()
+    sys.setrecursionlimit(10000)
+    d = a.subtract(b).subtract(c)
+    sys.setrecursionlimit(rl)
 
     p = d.toPolygons()
     
